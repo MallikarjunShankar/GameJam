@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 
 public class Hand : MonoBehaviour
 {
@@ -9,6 +10,8 @@ public class Hand : MonoBehaviour
     private List<CardData> cardsInHand = new();
 
     public IReadOnlyList<CardData> CardsInHand => cardsInHand;
+
+    public UnityEvent OnHandChanged = new UnityEvent();
 
     private void Start()
     {
@@ -23,6 +26,7 @@ public class Hand : MonoBehaviour
         }
 
         PrintHand();
+        OnHandChanged.Invoke();
     }
 
     public void DrawCard()
@@ -49,9 +53,12 @@ public class Hand : MonoBehaviour
         CardData card = cardsInHand[index];
 
         cardsInHand.RemoveAt(index);
+
         deck.DiscardCard(card);
 
         Debug.Log("Played: " + card.CardName);
+
+        OnHandChanged.Invoke();
 
         PrintHand();
     }
