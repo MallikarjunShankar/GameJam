@@ -1,10 +1,11 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public class CombatManager : MonoBehaviour
 {
     [Header("Combat References")]
     [SerializeField] private PlayerStats player;
-    [SerializeField] private EnemyStats enemy;
+    [SerializeField] private List<EnemyStats> enemies = new();
     [SerializeField] private Hand hand;
 
     [Header("Energy")]
@@ -20,6 +21,7 @@ public class CombatManager : MonoBehaviour
     public int MaxEnergy => maxEnergy;
     public int CurrentEnergy => currentEnergy;
     public bool IsPlayerTurn => playerTurn;
+    public EnemyStats CurrentEnemy { get; private set; }
 
     private void Start()
     {
@@ -28,13 +30,21 @@ public class CombatManager : MonoBehaviour
 
     public void StartCombat()
     {
-        if (player == null || enemy == null || hand == null)
+        if (player == null || enemies.Count == 0 || hand == null)
         {
             Debug.LogError("CombatManager is missing a reference.");
             return;
         }
 
         combatOver = false;
+
+        CurrentEnemy = GetFirstLivingEnemy();
+
+        if (CurrentEnemy == null)
+        {
+            Debug.LogError("No living enemies found.");
+            return;
+        }
 
         StartPlayerTurn();
     }
@@ -73,12 +83,18 @@ public class CombatManager : MonoBehaviour
 
         Debug.Log("Enemy Turn.");
 
-        enemy.Attack(player);
-
-        if (player.CurrentHealth <= 0)
+        foreach (EnemyStats enemy in enemies)
         {
-            combatOver = true;
-            return;
+            if (enemy == null || enemy.CurrentHealth <= 0)
+                continue;
+
+            enemy.Attack(player);
+
+            if (player.CurrentHealth <= 0)
+            {
+                combatOver = true;
+                return;
+            }
         }
 
         player.ResetBlock();
@@ -119,14 +135,36 @@ public class CombatManager : MonoBehaviour
 
         if (card.Type == CardType.Attack)
         {
-            enemy.TakeDamage(card.EffectValue);
-
-            if (enemy.CurrentHealth <= 0)
+            if (CurrentEnemy == null || CurrentEnemy.CurrentHealth <= 0)
             {
-                combatOver = true;
-                playerTurn = false;
+                CurrentEnemy = GetFirstLivingEnemy();
+            }
 
-                Debug.Log("Combat Won!");
+            if (CurrentEnemy == null)
+            {
+                Debug.Log("No living enemies remain.");
+                return false;
+            }
+
+            CurrentEnemy.TakeDamage(card.EffectValue);
+
+            if (CurrentEnemy.CurrentHealth <= 0)
+            {
+                Debug.Log("Defeated: " + CurrentEnemy.name);
+
+                CurrentEnemy = GetFirstLivingEnemy();
+
+                if (CurrentEnemy != null)
+                {
+                    Debug.Log("New target: " + CurrentEnemy.name);
+                }
+                else
+                {
+                    combatOver = true;
+                    playerTurn = false;
+
+                    Debug.Log("Combat Won!");
+                }
             }
         }
         else if (card.Type == CardType.Defense)
@@ -143,5 +181,16 @@ public class CombatManager : MonoBehaviour
         }
 
         return true;
+    }
+
+    private EnemyStats GetFirstLivingEnemy()
+    {
+        foreach (EnemyStats enemy in enemies)
+        {
+            if (enemy != null && enemy.CurrentHealth > 0)
+                return enemy;
+        }
+
+        return null;
     }
 }
