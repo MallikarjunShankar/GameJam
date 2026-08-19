@@ -6,7 +6,7 @@ public class Hand : MonoBehaviour
 {
     [SerializeField] private Deck deck;
     [SerializeField] private int startingHandSize = 5;
-
+    [SerializeField] private CombatManager combatManager;
     private List<CardData> cardsInHand = new();
 
     public IReadOnlyList<CardData> CardsInHand => cardsInHand;
@@ -15,15 +15,11 @@ public class Hand : MonoBehaviour
 
     private void Start()
     {
-        DrawStartingHand();
     }
 
     private void DrawStartingHand()
     {
-        for (int i = 0; i < startingHandSize; i++)
-        {
-            DrawCard();
-        }
+        DrawCards(startingHandSize);
 
         PrintHand();
         OnHandChanged.Invoke();
@@ -42,6 +38,17 @@ public class Hand : MonoBehaviour
         cardsInHand.Add(card);
     }
 
+    public void DrawCards(int amount)
+    {
+        for (int i = 0; i < amount; i++)
+        {
+            DrawCard();
+        }
+
+        PrintHand();
+        OnHandChanged.Invoke();
+    }
+
     public void PlayCard(int index)
     {
         if (index < 0 || index >= cardsInHand.Count)
@@ -52,6 +59,11 @@ public class Hand : MonoBehaviour
 
         CardData card = cardsInHand[index];
 
+        if (!combatManager.TryPlayCard(card))
+        {
+            return;
+        }
+
         cardsInHand.RemoveAt(index);
 
         deck.DiscardCard(card);
@@ -61,6 +73,20 @@ public class Hand : MonoBehaviour
         OnHandChanged.Invoke();
 
         PrintHand();
+    }
+
+    public void DiscardHand()
+    {
+        foreach (CardData card in cardsInHand)
+        {
+            deck.DiscardCard(card);
+        }
+
+        cardsInHand.Clear();
+
+        Debug.Log("Hand discarded.");
+
+        OnHandChanged.Invoke();
     }
 
     private void PrintHand()

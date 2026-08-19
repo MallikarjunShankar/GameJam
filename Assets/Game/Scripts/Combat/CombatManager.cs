@@ -10,6 +10,9 @@ public class CombatManager : MonoBehaviour
     [Header("Energy")]
     [SerializeField] private int maxEnergy = 3;
 
+    [Header("Cards")]
+    [SerializeField] private int cardsPerTurn = 5;
+
     private int currentEnergy;
     private bool playerTurn;
     private bool combatOver;
@@ -32,6 +35,7 @@ public class CombatManager : MonoBehaviour
         }
 
         combatOver = false;
+
         StartPlayerTurn();
     }
 
@@ -42,6 +46,8 @@ public class CombatManager : MonoBehaviour
 
         playerTurn = true;
         currentEnergy = maxEnergy;
+
+        hand.DrawCards(cardsPerTurn);
 
         Debug.Log("Player Turn - Energy: " + currentEnergy);
     }
@@ -54,6 +60,8 @@ public class CombatManager : MonoBehaviour
         playerTurn = false;
 
         Debug.Log("Player Turn Ended.");
+
+        hand.DiscardHand();
 
         EnemyTurn();
     }
@@ -94,5 +102,46 @@ public class CombatManager : MonoBehaviour
         currentEnergy -= amount;
 
         Debug.Log("Energy: " + currentEnergy + "/" + maxEnergy);
+    }
+
+    public bool TryPlayCard(CardData card)
+    {
+        if (!playerTurn || combatOver)
+            return false;
+
+        if (!CanSpendEnergy(card.EnergyCost))
+        {
+            Debug.Log("Not enough energy to play " + card.CardName);
+            return false;
+        }
+
+        SpendEnergy(card.EnergyCost);
+
+        if (card.Type == CardType.Attack)
+        {
+            enemy.TakeDamage(card.EffectValue);
+
+            if (enemy.CurrentHealth <= 0)
+            {
+                combatOver = true;
+                playerTurn = false;
+
+                Debug.Log("Combat Won!");
+            }
+        }
+        else if (card.Type == CardType.Defense)
+        {
+            player.AddBlock(card.EffectValue);
+
+            Debug.Log("Defend played. Block: " + player.CurrentBlock);
+        }
+        else if (card.Type == CardType.Utility)
+        {
+            player.Heal(card.EffectValue);
+
+            Debug.Log("Heal played.");
+        }
+
+        return true;
     }
 }
